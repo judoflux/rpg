@@ -4,12 +4,14 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using EnemyEnum.Enums;
-public class Enemy : Entity
+public class Enemy : EnemyEntity
 {
    
    [SerializeField] protected GameObject counterImage;
    [HideInInspector] public float lastTimeAttacked;
-   
+
+ 
+
    public EnemyStateMachine stateMachine { get; private set; }
    public string lastAnimBoolName { get; private set; }
    public EnemyType enemyType = EnemyType.None; // Add this line
@@ -20,7 +22,7 @@ public class Enemy : Entity
    {
       base.Awake();
       stateMachine = new EnemyStateMachine();
-      enemyData.defaultMoveSpeed = enemyData.moveSpeed;
+      enemyData.defaultMoveSpeed = enemyData.movementSpeed;
    }
    protected override void Start()
    {
@@ -115,31 +117,17 @@ public class Enemy : Entity
    }
    public virtual RaycastHit2D IsPlayerDetected()=>Physics2D.Raycast(playerCheck.position, Vector2.right * facingDirection, enemyData.playerCheckDistance, enemyData.whatIsPlayer);
    
-   protected override void OnDrawGizmos()
-   {
-      
-      Gizmos.color = Color.red;
-      Gizmos.DrawLine(ledgeCheck.position, new Vector3(ledgeCheck.position.x + enemyData.ledgeCheckDistance, ledgeCheck.position.y));
-      Gizmos.DrawLine(wallCheck.position,new Vector3(wallCheck.position.x + enemyData.playerCheckDistance,wallCheck.position.y));
-      Gizmos.DrawLine(wallBackCheck.position, new Vector3(wallBackCheck.position.x + enemyData.wallBackCheckDistance, wallBackCheck.position.y));
-      Gizmos.DrawLine(groundCheck.position,
-         new Vector3(groundCheck.position.x, groundCheck.position.y - enemyData.groundCheckDistance));
-      Gizmos.DrawLine(wallCheck.position,
-         new Vector3(wallCheck.position.x + enemyData.wallCheckDistance, wallCheck.position.y));
-      Gizmos.DrawWireSphere(attackCheck.position,enemyData.attackCheckRadius);
-      Gizmos.DrawLine(transform.position,new Vector3(transform.position.x + enemyData.attackDistance * facingDirection,transform.position.y));
-   }
-
+   
    public virtual void FreezeTime(bool _timeFreeze)
    {
       if (_timeFreeze)
       {
-         enemyData.moveSpeed = 0;
+         enemyData.movementSpeed = 0;
          anim.speed = 0;
       }
       else
       {
-         enemyData.moveSpeed = enemyData.defaultMoveSpeed;
+         enemyData.movementSpeed = enemyData.defaultMoveSpeed;
          anim.speed = 1;
       }
       

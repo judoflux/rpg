@@ -331,15 +331,17 @@ public class CharacterStats : MonoBehaviour
         DecreaseHealthBy(_damage);
         StartCoroutine(InvincibilityCoroutine());
         // Rest of code...
-        var entityfx = GetComponent<Entity>();
-        if (entityfx == null)
+        var entity = GetComponent<Entity>();
+        var enemyEntity = GetComponent<EnemyEntity>();
+        if (entity == null)
         {
             Debug.LogError("entity is null");
             return;
         }
         else
         {
-            entityfx.DamageEffect();
+            entity.DamageEffect();
+            enemyEntity.DamageEffect();
         }
 
         if (entityFX == null)

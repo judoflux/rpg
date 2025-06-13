@@ -3,6 +3,7 @@ using System.Collections;
 using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Yushan.Enums;
 using Object = UnityEngine.Object;
 
 public class Player : Entity
@@ -33,14 +34,14 @@ public class Player : Entity
     {
         startFallHeight = -1000f; // 重置起始高度
     }
-   
-    
+    public Armor EquippedArmor { get; set; } = Armor.None;
+
 
     #region state variable
 
-    
 
-   
+
+
     public PlayerInputController inputController { get; private set; }
     public PlayerStateMachine stateMachine { get; private set; }
     
@@ -214,7 +215,7 @@ public class Player : Entity
         Debug.Log("[ClearGrenade] Destroying grenade after delay...");
         StartCoroutine(DestroyGrenadeAfterDelay(.1f));
     }
-
+    
     private IEnumerator DestroyGrenadeAfterDelay(float delay)
     {
         if (grenade == null) {

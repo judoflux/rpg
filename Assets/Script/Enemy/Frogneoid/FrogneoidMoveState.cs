@@ -13,7 +13,7 @@ public class FrogneoidMoveState : FrogneoidGroundedState
     public override void Enter()
     {
         base.Enter();
-        enemy.SetVelocityX(enemyData.moveSpeed);
+        enemy.SetVelocityX(enemyData.movementSpeed);
     }
 
     public override void Update()
@@ -28,7 +28,7 @@ public class FrogneoidMoveState : FrogneoidGroundedState
     public override void Exit()
     {
         base.Exit();
-        enemy.EnemyZeroVelocity();
+        enemy.ZeroVelocity();
     }
 }
 

@@ -48,7 +48,7 @@ public class AngelBattleState : EnemyState
         {
             moveDirection = -1;
         }
-        enemy.EnemySetVelocity(enemyData.moveSpeed * moveDirection,rb.linearVelocity.y);
+        enemy.SetVelocityX(enemyData.movementSpeed);
     }
 
     private bool CanAttack()

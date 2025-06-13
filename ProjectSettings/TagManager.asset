@@ -52,8 +52,8 @@ TagManager:
   - Destructable
   - Interactable
   - CheckPoint
-  - 
-  - 
+  - WallCeiling
+  - CeilingTop
   - 
   - 
   - 

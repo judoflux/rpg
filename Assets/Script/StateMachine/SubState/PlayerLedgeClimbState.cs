@@ -64,7 +64,7 @@ public class PlayerLedgeClimbState : PlayerState
             isClimbing = false;
         }
         playerData.isLedgeClimbState = false;
-        
+        isTouchingCeiling = false;
         // 启用玩家控制
         // player.SetIsBusy(false);
         // // // 重置悬崖攀爬动画
@@ -148,6 +148,6 @@ public class PlayerLedgeClimbState : PlayerState
     public override void DoChecks()
     {
         base.DoChecks();
-        
+        isTouchingCeiling = player.CheckIfTouchingCeiling();
     }
 }

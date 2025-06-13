@@ -1,16 +1,17 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Entity : MonoBehaviour
+public class EnemyEntity : MonoBehaviour
 {
-    private PlayerState playerState;
-    private Player player => GetComponent<Player>();
-    private Enemy _enemy => GetComponent<Enemy>();
+    private EnemyState State;
+    
+    private Enemy enemy => GetComponent<Enemy>();
     public EnemyData enemyData;
-    public PlayerData playerData;
+    
     public CapsuleCollider2D cd;
-    private PlayerColliderManager playerColliderManager;
+    private EnemyColliderManager ColliderManager;
 
     [Header("Collision info")] 
     public bool isGroundDetected { get; private set; }
@@ -27,22 +28,20 @@ public class Entity : MonoBehaviour
     public bool isTouchingCeiling { get; private set; }
     private bool touchingWall; // 是否接触墙
     public bool isWallBackBottomDetected { get; private set; }
-
-    public bool touchingLadder { get; private set; } // 是否接触梯子
     public bool isTouchingWall => touchingWall; // 外部可访问的只读属性
     public Transform attackCheck;
     [SerializeField] private Transform ceilingTransform;
     
-    
+    [SerializeField] protected Transform playerCheck; // Added to fix missing reference
     [SerializeField] protected Transform groundCheck;
     [SerializeField] protected Transform wallCheck;
     [SerializeField] protected Transform wallBackCheck;
     [SerializeField] protected Transform headCheck;
-    [SerializeField] protected Transform playerCheck;
+    [SerializeField] protected Transform Check;
     [SerializeField] protected Transform edgeParentChecker;
     [SerializeField] private Transform leftGroundCheck;
     [SerializeField] private Transform rightGroundCheck;
-    [SerializeField] private Transform ladderCheck;
+ 
     [SerializeField] private Transform frontBottomCheck;
     [SerializeField] private Transform bottomGroundCheck;
     [SerializeField] protected Transform ledgeCheck;
@@ -156,7 +155,7 @@ public class Entity : MonoBehaviour
         fx = GetComponent<EntityFX>();
         stats = GetComponent<CharacterStats>();
         cd = GetComponent<CapsuleCollider2D>();
-        playerColliderManager = GetComponent<PlayerColliderManager>();
+        ColliderManager = GetComponent<EnemyColliderManager>();
         colliderSize = cd.size;
         
     }
@@ -178,21 +177,21 @@ public class Entity : MonoBehaviour
     {
         
 
-        if (playerColliderManager != null)
-        {
-            Vector2 currentWorkspace = playerColliderManager.workspace;
+        // if (ColliderManager != null)
+        // {
+        //     Vector2 currentWorkspace = ColliderManager.workspace;
 
-            // 仅在 workspace 变化时更新
-            if (currentWorkspace != workspace)
-            {
-                workspace = currentWorkspace;
+        //     // 仅在 workspace 变化时更新
+        //     if (currentWorkspace != workspace)
+        //     {
+        //         workspace = currentWorkspace;
 
-             #if UNITY_EDITOR
-                Debug.Log("Current Workspace Updated: " + workspace);
-             #endif
-                // 根据 workspace 处理逻辑
-            }
-        }
+        //      #if UNITY_EDITOR
+        //         Debug.Log("Current Workspace Updated: " + workspace);
+        //      #endif
+        //         // 根据 workspace 处理逻辑
+        //     }
+        // }
     }
 
     public virtual void DamageEffect()=>StartCoroutine("HitKnockback");
@@ -217,26 +216,7 @@ public class Entity : MonoBehaviour
         isKnocked = false;
     }
     
-    public void EnemySetVelocity(float xVelocity, float yVelocity)
-    {
-        if (isKnocked)
-        {
-            return; //if knocked can not move
-        }
-        rb.linearVelocity = new Vector2(xVelocity, yVelocity);
-        if (IsEnemyGroundDetected()) FlipController(xVelocity);
-    }
-
-    public void EnemyZeroVelocity()
-    {
-        if (isKnocked)
-        {
-            return; //if knocked can not move
-        }
-
-        rb.linearVelocity = new Vector2(0f, 0f);
-        
-    }
+    
        #region velocity
    
 
@@ -253,7 +233,7 @@ public class Entity : MonoBehaviour
         Debug.Log("movetoward");
         Transform objTransform = GetComponent<Transform>();
         Vector2 targetPosition = (Vector2)objTransform.position + direction.normalized * distance;
-        objTransform.position = Vector2.Lerp(objTransform.position, targetPosition, Time.deltaTime * playerData.movementSpeed);
+        objTransform.position = Vector2.Lerp(objTransform.position, targetPosition, Time.deltaTime * enemyData.movementSpeed);
     }
     public void ApplyFallingGravity(float multiplier)
     {
@@ -335,7 +315,7 @@ public class Entity : MonoBehaviour
         {
             isOnSlope = false; // 无坡自动重置
         }
-        if (player.inputController.NormInputX == 0) // 停止不移动时
+        if (Math.Abs(rb.linearVelocity.x) == 0) // 停止不移动时
         {
             rb.sharedMaterial = fullFriction; // 设置高摩擦力
         }
@@ -345,11 +325,11 @@ public class Entity : MonoBehaviour
         }
 
         // 处理斜坡移动角度的速度分量（提供更平滑的移动处理）
-        if (player.inputController.NormInputX != 0)
+        if (Math.Abs(rb.linearVelocity.x) != 0)
         {
             rb.linearVelocity = new Vector2(
-                slopeNormalPerp.x * -player.inputController.NormInputX * playerData.movementSpeed,
-                slopeNormalPerp.y * -player.inputController.NormInputX * playerData.movementSpeed
+                slopeNormalPerp.x * - enemyData.movementSpeed,
+                slopeNormalPerp.y * - enemyData.movementSpeed
             );
         }
         else
@@ -358,7 +338,7 @@ public class Entity : MonoBehaviour
             if (!IsGroundDetected())
             {
                 // 角色离开坡地，可能需要恢复其他默认行为
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y - playerData.gravity * Time.deltaTime);
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, rb.linearVelocity.y - enemyData.gravity * Time.deltaTime);
             }
 
 
@@ -367,8 +347,8 @@ public class Entity : MonoBehaviour
     }
     public void SlopeCheckHorizontal(Vector2 checkPos)
     {
-        RaycastHit2D slopeHitFront = Physics2D.Raycast(checkPos, transform.right, playerData.slopeCheckDistance, playerData.whatIsGround);
-        RaycastHit2D slopeHitBack = Physics2D.Raycast(checkPos, -transform.right, playerData.slopeCheckDistance, playerData.whatIsGround);
+        RaycastHit2D slopeHitFront = Physics2D.Raycast(checkPos, transform.right, enemyData.slopeCheckDistance, enemyData.whatIsGround);
+        RaycastHit2D slopeHitBack = Physics2D.Raycast(checkPos, -transform.right, enemyData.slopeCheckDistance, enemyData.whatIsGround);
         if (slopeHitFront)
         {
             float slopeFAngle = Vector2.Angle(slopeHitFront.normal, Vector2.up);
@@ -403,10 +383,10 @@ public class Entity : MonoBehaviour
         Vector2 checkPos = cd.bounds.center - new Vector3(0, colliderSize.y/2);
         
         // 检测坡地
-        RaycastHit2D hit = Physics2D.Raycast(checkPos, Vector2.down, playerData.slopeCheckDistance, playerData.whatIsGround);
+        RaycastHit2D hit = Physics2D.Raycast(checkPos, Vector2.down, enemyData.slopeCheckDistance, enemyData.whatIsGround);
 
         // 绘制黄色检测射线
-        Debug.DrawLine(checkPos, checkPos + Vector2.down * playerData.slopeCheckDistance, Color.yellow);
+        Debug.DrawLine(checkPos, checkPos + Vector2.down * enemyData.slopeCheckDistance, Color.yellow);
         
         if (hit)
         {
@@ -431,7 +411,7 @@ public class Entity : MonoBehaviour
             {
                 canWalkOnSlope = true;
             }
-            if (isOnSlope && player.inputController.NormInputX == 0 && canWalkOnSlope)
+            if (isOnSlope && Mathf.Abs(rb.linearVelocity.x) == 0 && canWalkOnSlope)
             {
                 rb.sharedMaterial = fullFriction; // 停止时设置高摩擦力
             }
@@ -483,24 +463,24 @@ public class Entity : MonoBehaviour
         if (isOnSlope && !canWalkOnSlope)
         {
             // 如果坡度太陡，无法站立，则强制滑下来
-            rb.linearVelocity = new Vector2(slopeNormalPerp.x * -1f, slopeNormalPerp.y * -1f) * playerData.slopeSlidingSpeed; 
+            rb.linearVelocity = new Vector2(slopeNormalPerp.x * -1f, slopeNormalPerp.y * -1f) * enemyData.slopeSlidingSpeed; 
             Debug.Log("静止时滑下陡坡");
         }
         else if (isOnSlope && rb.linearVelocity == Vector2.zero && Mathf.Abs(slopeDownAngle) > 0.1f)
         {
             // 平缓坡度上站立时滑下
-            rb.linearVelocity = new Vector2(slopeNormalPerp.x * -1f, slopeNormalPerp.y * -1f) * playerData.slopeStandingSlideSpeed;
+            rb.linearVelocity = new Vector2(slopeNormalPerp.x * -1f, slopeNormalPerp.y * -1f) * enemyData.slopeStandingSlideSpeed;
             Debug.Log("静止时滑动（下坡）");
         }
     }
     public void HandleSlopeClimbing()
     {
-        if (isOnSlope && Mathf.Abs(player.inputController.NormInputX) > 0)
+        if (isOnSlope && Mathf.Abs(rb.linearVelocity.x) > 0)
         {
             if (rb.linearVelocity.x > 0 && slopeNormalPerp.x > 0 || rb.linearVelocity.x < 0 && slopeNormalPerp.x < 0)
             {
                 // 上坡前进，减速
-                rb.linearVelocity *= playerData.slopeFrictionMultiplier;
+                rb.linearVelocity *= enemyData.slopeFrictionMultiplier;
                 Debug.Log("上坡减速");
             }
         }
@@ -508,8 +488,8 @@ public class Entity : MonoBehaviour
     // public void SlopeCheckVertical(Vector2 checkPos)
     // {
     //     
-    //     RaycastHit2D hit = Physics2D.Raycast(checkPos, Vector2.down, playerData.slopeCheckDistance,
-    //         playerData.whatIsGround);
+    //     RaycastHit2D hit = Physics2D.Raycast(checkPos, Vector2.down, enemyData.slopeCheckDistance,
+    //         enemyData.whatIsGround);
     //
     //     if (hit)
     //     {
@@ -540,7 +520,7 @@ public class Entity : MonoBehaviour
     //         // 画出调试线，用于检查坡度检测是否正确
     //         Debug.DrawRay(hit.point, slopeNormalPerp, Color.yellow);
     //         Debug.DrawRay(hit.point, hit.normal, Color.magenta);
-    //         Debug.DrawLine(checkPos, checkPos + Vector2.down * playerData.slopeCheckDistance, Color.blue);
+    //         Debug.DrawLine(checkPos, checkPos + Vector2.down * enemyData.slopeCheckDistance, Color.blue);
     //     }
     //     else
     //     {
@@ -572,7 +552,7 @@ public class Entity : MonoBehaviour
     // public void SlopeCheckVertical(Vector2 checkPos)
     // {
     //     // 射线检测地面
-    //     RaycastHit2D hit = Physics2D.Raycast(checkPos, Vector2.down, playerData.slopeCheckDistance, playerData.whatIsGround);
+    //     RaycastHit2D hit = Physics2D.Raycast(checkPos, Vector2.down, enemyData.slopeCheckDistance, enemyData.whatIsGround);
     //
     //     if (hit)
     //     {
@@ -617,19 +597,19 @@ public class Entity : MonoBehaviour
     
     public virtual bool CheckIfTouchingHead()
     {
-        return Physics2D.Raycast(headCheck.position, Vector2.up, playerData.headCheckDistance, playerData.whatIsAllLayer);
+        return Physics2D.Raycast(headCheck.position, Vector2.up, enemyData.headCheckDistance, enemyData.whatIsAllLayer);
     }
 
     public virtual bool CheckIfTouchingCeiling()
     {
-        RaycastHit2D hit = Physics2D.Raycast(ceilingTransform.position,Vector2.up,playerData.ceilingCheckDistance,playerData.whatIsCeiling);
+        RaycastHit2D hit = Physics2D.Raycast(ceilingTransform.position,Vector2.up,enemyData.ceilingCheckDistance,enemyData.whatIsCeiling);
         isTouchingCeiling = hit.collider != null;
         return isTouchingCeiling;
     }
     
     public virtual bool CheckIfTouchingEdge()
     {
-        RaycastHit2D hit = Physics2D.Raycast(edgeCheck.position, Vector2.right * player.facingDirection, playerData.edgeCheckDistance, playerData.whatIsEdge);
+        RaycastHit2D hit = Physics2D.Raycast(edgeCheck.position, Vector2.right * facingDirection, enemyData.edgeCheckDistance, enemyData.whatIsEdge);
         isEdgeDetected = hit.collider != null;
         return isEdgeDetected;
     }
@@ -637,7 +617,7 @@ public class Entity : MonoBehaviour
    
     public virtual bool IsGroundDetected()
     {
-        RaycastHit2D hit = Physics2D.Raycast(groundCheck.position, Vector2.down, playerData.groundCheckDistance, playerData.whatIsGround);
+        RaycastHit2D hit = Physics2D.Raycast(groundCheck.position, Vector2.down, enemyData.groundCheckDistance, enemyData.whatIsGround);
         isGroundDetected = hit.collider != null;
 
         
@@ -649,30 +629,21 @@ public class Entity : MonoBehaviour
     
     public virtual bool IsBottomGroundDetected()
     {
-        RaycastHit2D hit = Physics2D.Raycast(bottomGroundCheck.position, Vector2.down, playerData.bottomGroundCheckDistance, playerData.whatIsGround);
+        RaycastHit2D hit = Physics2D.Raycast(bottomGroundCheck.position, Vector2.down, enemyData.bottomGroundCheckDistance, enemyData.whatIsGround);
         isBottomGroundDetected = hit.collider != null;
         return isBottomGroundDetected;
     }
     
-    public virtual bool IsEnemyGroundDetected()
+        public virtual bool IsWallBackDetected()
     {
-        RaycastHit2D hit = Physics2D.Raycast(groundCheck.position, Vector2.down, enemyData.groundCheckDistance, enemyData.groundAndEdgeLayer);
-        bool isEnemyGroundDetected = hit.collider != null;
-    
-        
-    
-        return isEnemyGroundDetected;
-    }
-    public virtual bool IsWallBackDetected()
-    {
-        bool check = Physics2D.Raycast(wallBackCheck.position, Vector2.right * -player.facingDirection, playerData.wallBackCheckDistance, playerData.whatIsWall);
+        bool check = Physics2D.Raycast(wallBackCheck.position, Vector2.right * -facingDirection, enemyData.wallBackCheckDistance, enemyData.whatIsWall);
         
         return check;
     }
 
     public virtual bool IsLeftGroundDetected()
     {
-        RaycastHit2D hit = Physics2D.Raycast(leftGroundCheck.position, Vector2.down , playerData.groundCheckDistance, playerData.whatIsGround);
+        RaycastHit2D hit = Physics2D.Raycast(leftGroundCheck.position, Vector2.down , enemyData.groundCheckDistance, enemyData.whatIsGround);
         leftGroundDetected = hit.collider != null;
         if (!leftGroundDetected)
         {
@@ -683,7 +654,7 @@ public class Entity : MonoBehaviour
 
     public virtual bool IsRightGroundDetected()
     {
-        RaycastHit2D hit = Physics2D.Raycast(rightGroundCheck.position, Vector2.down, playerData.groundCheckDistance, playerData.whatIsGround);
+        RaycastHit2D hit = Physics2D.Raycast(rightGroundCheck.position, Vector2.down, enemyData.groundCheckDistance, enemyData.whatIsGround);
         rightGroundDetected = hit.collider != null;
         if (!rightGroundDetected)
         {
@@ -694,48 +665,38 @@ public class Entity : MonoBehaviour
     public virtual bool IsWallDetected()
     {
        // 墙检测逻辑
-       touchingWall = Physics2D.Raycast(wallCheck.position, Vector2.right * facingDirection, playerData.wallCheckDistance, playerData.whatIsWall);
+       touchingWall = Physics2D.Raycast(wallCheck.position, Vector2.right * facingDirection, enemyData.wallCheckDistance, enemyData.whatIsWall);
        
        return touchingWall;
     }
-    public virtual bool IsLadderDetected()
-    {
-        touchingLadder = Physics2D.Raycast(transform.position,Vector2.right * facingDirection, playerData.ladderCheckDistance, playerData.whatIsLadder);
-        
-        return touchingLadder;
-    }
 
-
-
-
-    public virtual bool IsEnemyWallDetected()
-    { 
-        // 墙检测逻辑
-        return Physics2D.Raycast(wallCheck.position, Vector2.right * facingDirection, enemyData.wallCheckDistance, enemyData.whatIsWall);
-    }
+    
+    
+    
+    
     protected virtual void OnDrawGizmos()
     {
         Gizmos.color = Color.red;
-        Gizmos.DrawLine(ceilingTransform.position, new Vector3(ceilingTransform.position.x, ceilingTransform.position.y + playerData.ceilingCheckDistance));
-        Gizmos.DrawLine(edgeCheck.position, new Vector3(edgeCheck.position.x + playerData.edgeCheckDistance, edgeCheck.position.y));
+        Gizmos.DrawLine(ceilingTransform.position, new Vector3(ceilingTransform.position.x, ceilingTransform.position.y + enemyData.ceilingCheckDistance));
+        Gizmos.DrawLine(edgeCheck.position, new Vector3(edgeCheck.position.x + enemyData.edgeCheckDistance, edgeCheck.position.y));
         
         
         
         
-        Gizmos.DrawLine(bottomGroundCheck.position,new Vector3(bottomGroundCheck.position.x,bottomGroundCheck.position.y - playerData.bottomGroundCheckDistance));
+        Gizmos.DrawLine(bottomGroundCheck.position,new Vector3(bottomGroundCheck.position.x,bottomGroundCheck.position.y - enemyData.bottomGroundCheckDistance));
         
         
         
-        Gizmos.DrawLine(leftGroundCheck.position,new Vector3(leftGroundCheck.position.x ,leftGroundCheck.position.y- playerData.groundCheckDistance));
-        Gizmos.DrawLine(rightGroundCheck.position,new Vector3(rightGroundCheck.position.x,rightGroundCheck.position.y - playerData.groundCheckDistance));
-        Gizmos.DrawLine(headCheck.position,new Vector3(headCheck.position.x,headCheck.position.y + playerData.headCheckDistance));
-        Gizmos.DrawLine(wallBackCheck.position, new Vector3(wallBackCheck.position.x - playerData.wallBackCheckDistance, wallBackCheck.position.y));
+        //Gizmos.DrawLine(leftGroundCheck.position,new Vector3(leftGroundCheck.position.x ,leftGroundCheck.position.y- enemyData.groundCheckDistance));
+        //Gizmos.DrawLine(rightGroundCheck.position,new Vector3(rightGroundCheck.position.x,rightGroundCheck.position.y - enemyData.groundCheckDistance));
+        Gizmos.DrawLine(headCheck.position,new Vector3(headCheck.position.x,headCheck.position.y + enemyData.headCheckDistance));
+        Gizmos.DrawLine(wallBackCheck.position, new Vector3(wallBackCheck.position.x - enemyData.wallBackCheckDistance, wallBackCheck.position.y));
         Gizmos.DrawLine(groundCheck.position,
-            new Vector3(groundCheck.position.x, groundCheck.position.y - playerData.groundCheckDistance));
+            new Vector3(groundCheck.position.x, groundCheck.position.y - enemyData.groundCheckDistance));
         Gizmos.DrawLine(wallCheck.position,
-            new Vector3(wallCheck.position.x + playerData.wallCheckDistance, wallCheck.position.y));
+            new Vector3(wallCheck.position.x + enemyData.wallCheckDistance, wallCheck.position.y));
         
-        Gizmos.DrawWireSphere(attackCheck.position,playerData.attackCheckRadius);
+        Gizmos.DrawWireSphere(attackCheck.position,enemyData.attackCheckRadius);
         
     }
     
@@ -755,11 +716,11 @@ public class Entity : MonoBehaviour
         facingRight = !facingRight;
         // transform.Rotate(0,180,0);
         
-        // Flip the model by inverting its scale (if needed, for the player itself)
-        Vector3 playerScale = transform.localScale;
-        playerScale.x *= -1;
-        // // Flip the player's X-axis
-        transform.localScale = playerScale;
+        // Flip the model by inverting its scale (if needed, for the  itself)
+        Vector3 Scale = transform.localScale;
+        Scale.x *= -1;
+        // // Flip the 's X-axis
+        transform.localScale = Scale;
         // Flip the EdgeParentChecker
         Vector3 edgeCheckerScale = edgeParentChecker.transform.localScale;
         edgeCheckerScale.x *= -1;
@@ -804,14 +765,14 @@ public class Entity : MonoBehaviour
     public Vector2 DetermineCornerPosition()
     {
         // 获取 CapsuleCollider2D 的半径
-        float capsuleRadius = playerData.standColliderSize.x / 2f; // x 是水平半径
+        float capsuleRadius = enemyData.standColliderSize.x / 2f; // x 是水平半径
 
         // 水平方向的检测 (改动)
         RaycastHit2D xHit = Physics2D.Raycast(
             wallCheck.position, 
             Vector2.right * facingDirection, 
-            playerData.wallCheckDistance + capsuleRadius,  // 增加半径补偿
-            playerData.whatIsWall
+            enemyData.wallCheckDistance + capsuleRadius,  // 增加半径补偿
+            enemyData.whatIsWall
         );
         float xDistance = xHit.distance - capsuleRadius;  // 减去圆弧半径
         Debug.Log("x distance: " + xDistance);
@@ -824,7 +785,7 @@ public class Entity : MonoBehaviour
             ledgeCheck.position + (Vector3)(workspace), 
             Vector2.down, 
             ledgeCheck.position.y - wallCheck.position.y + 0.015f,
-            playerData.whatIsLedge
+            enemyData.whatIsLedge
         );
 
         float yDistance = yHit.distance;
@@ -842,14 +803,14 @@ public class Entity : MonoBehaviour
     // public Vector2 DetermineEdgeCornerPosition()
     // {
     //     // 从`edgeWallCheck`发射水平射线
-    //     RaycastHit2D xHit = Physics2D.Raycast(edgeWallCheck.position, Vector2.right * facingDirection, playerData.edgeCheckDistance, playerData.whatIsEdge);
+    //     RaycastHit2D xHit = Physics2D.Raycast(edgeWallCheck.position, Vector2.right * facingDirection, enemyData.edgeCheckDistance, enemyData.whatIsEdge);
     //     float xDistance = xHit.distance;
     //
     //     // 水平射线结果
     //     workSpace2.Set(xDistance * facingDirection, 0f);
     //
     //     // 从`edgeCheck`位置发射垂直射线
-    //     RaycastHit2D yHit = Physics2D.Raycast(edgeCheck.position + (Vector3)(workSpace2), Vector2.down, edgeCheck.position.y - edgeWallCheck.position.y, playerData.whatIsEdge);
+    //     RaycastHit2D yHit = Physics2D.Raycast(edgeCheck.position + (Vector3)(workSpace2), Vector2.down, edgeCheck.position.y - edgeWallCheck.position.y, enemyData.whatIsEdge);
     //     float yDistance = yHit.distance;
     //
     //     // 返回精确的边缘Corner

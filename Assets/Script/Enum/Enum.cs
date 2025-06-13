@@ -13,9 +13,26 @@ namespace Yushan.Enums
         Incendiary //燃燒手榴彈
 
     }
+    public enum Weapon
+    {
+        None,
+        Sword,
+        Axe,
 
+    }
+    public enum Armor
+    {
+        None,
+        Helmet,
+        Chestplate,
+        Leggings,
+        Boots,
+        Shield,
+        RocketLauncher,
+    }
     public enum EquipmentType
     {
+        None,
         Weapon,
         Armor,
         Amulet,
